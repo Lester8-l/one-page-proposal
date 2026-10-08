@@ -1,0 +1,7 @@
+out/
+_tmp_pages/
+_fit_probe.html
+*.pyc
+__pycache__/
+.DS_Store
+Thumbs.db

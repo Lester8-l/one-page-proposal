@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一頁紙方案產生器 · Lester Liang</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=LXGW+WenKai+TC:wght@400;700&family=Iansui&family=Noto+Sans+TC:wght@400;500;700&family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* ============================================================
+   一頁紙方案 tokens（來源 lesterliang.com，勿改色值）
+   ============================================================ */
+:root{
+  --warm-white:#FFFDF8;  --cream:#FAF9F7;   --paper:#F4F0E6;   --gray:#EBE8E0;
+  --forest:#2E5E4E;      --forest-deep:#234839; --forest-soft:#3D6B58; --forest-tint:#E7EFEB;
+  --gold:#B8893B;        --gold-soft:#C9A464;   --ink-soft:#6B6256;    --sage:#A8BFB2;
+  --charcoal:#14201B;    --on-forest:#F7F5F0;   --line:rgba(20,32,27,.10); --line-warm:#E8DFD0;
+
+  --font-title:"Noto Serif TC",serif;
+  --font-soft:"LXGW WenKai TC","Noto Serif TC",serif;
+  --font-hand:"Iansui","LXGW WenKai TC",serif;
+  --font-en:"Cormorant Garamond",serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#EDEAE3;font-family:var(--font-soft);padding:40px 20px 80px;}
+
+/* ── 頁面上的工具列（不會畫進圖）── */
+.toolbar{max-width:1080px;margin:0 auto 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;}
+.toolbar h1{font-size:22px;color:var(--forest-deep);font-weight:700;font-family:var(--font-title);}
+.toolbar .hint{font-size:14px;color:var(--ink-soft);font-family:"Noto Sans TC",sans-serif;}
+.btn{font-family:"Noto Sans TC",sans-serif;font-size:15px;font-weight:700;background:var(--forest);color:#fff;border:none;border-radius:999px;padding:11px 24px;cursor:pointer;}
+.btn.ghost{background:#fff;color:var(--forest);border:1.5px solid var(--forest);}
+.btn:disabled{opacity:.5;cursor:wait;}
+.controls{max-width:1080px;margin:0 auto 28px;padding:18px 22px;background:#fff;border:1.5px solid var(--line-warm);border-radius:18px;display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;font-family:"Noto Sans TC",sans-serif;font-size:14px;color:var(--ink-soft);}
+.controls label{display:flex;align-items:center;gap:8px;}
+.controls input[type=text]{font-family:"Noto Sans TC",sans-serif;font-size:14px;padding:8px 12px;border:1.5px solid var(--line-warm);border-radius:10px;color:var(--charcoal);}
+.controls input[type=text]:focus{outline:none;border-color:var(--forest);}
+.deck{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:56px;}
+.card-wrap{position:relative;}
+.card-label{font-family:"Noto Sans TC",sans-serif;font-size:13px;color:var(--ink-soft);margin-bottom:10px;letter-spacing:.06em;}
+.card-label b{color:var(--forest);}
+
+/* ============================================================
+   卡片本體 1080×1350
+   ============================================================ */
+.card{
+  position:relative;width:1080px;height:1350px;background:var(--warm-white);
+  padding:60px;overflow:hidden;font-family:var(--font-soft);color:var(--charcoal);
+}
+.frame{
+  position:relative;width:100%;height:100%;border:1.5px solid var(--line-warm);
+  border-radius:30px;padding:46px 58px;display:flex;flex-direction:column;z-index:2;
+  background:linear-gradient(180deg,var(--warm-white) 0%,var(--cream) 100%);
+}
+
+/* ── header ── */
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;}
+.who{display:flex;align-items:center;gap:18px;}
+.avatar{
+  flex:0 0 auto;width:66px;height:66px;border-radius:50%;background:var(--forest);
+  color:var(--on-forest);display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-title);font-size:33px;font-weight:700;padding-bottom:3px;
+}
+.who-txt .for{font-family:var(--font-title);font-size:38px;font-weight:700;color:var(--forest-deep);line-height:1.28;}
+.who-txt .for em.hl{color:var(--gold);font-style:normal;}
+.who-txt .date{font-family:var(--font-en);font-size:21px;letter-spacing:.14em;color:var(--ink-soft);margin-top:5px;}
+.brand{font-family:var(--font-en);font-size:20px;letter-spacing:.24em;color:var(--forest);font-weight:600;text-align:right;line-height:1.45;padding-top:5px;}
+.brand span{display:block;font-size:13px;letter-spacing:.32em;color:var(--sage);}
+.rule{height:1.5px;background:var(--line-warm);margin:22px 0 0;position:relative;}
+.rule::after{content:"";position:absolute;left:0;top:-1px;width:88px;height:3px;background:var(--gold);border-radius:2px;}
+
+/* ── 內容區塊 ── */
+.blk{display:flex;flex-direction:column;justify-content:center;}
+.kicker{
+  font-family:"Noto Sans TC",sans-serif;font-size:22px;font-weight:700;letter-spacing:.24em;
+  color:var(--gold);margin-bottom:13px;text-transform:uppercase;
+}
+/* 需求清單 */
+.needs ul{list-style:none;}
+.needs li{display:flex;align-items:flex-start;gap:16px;font-size:34px;line-height:1.44;color:var(--forest-deep);margin-bottom:14px;font-weight:400;}
+.needs li:last-child{margin-bottom:0;}
+.needs li i{
+  flex:0 0 auto;width:38px;height:38px;border-radius:50%;border:2px solid var(--sage);
+  display:flex;align-items:center;justify-content:center;font-family:var(--font-en);
+  font-size:20px;font-weight:600;color:var(--forest-soft);font-style:normal;margin-top:3px;
+}
+/* 方案 */
+.plan-name{font-family:var(--font-title);font-size:37px;font-weight:700;color:var(--forest-deep);line-height:1.3;margin-bottom:14px;}
+.points{list-style:none;}
+.points li{background:var(--forest-tint);border-radius:16px;padding:13px 22px;margin-bottom:10px;}
+.points li:last-child{margin-bottom:0;}
+.pt-a{display:block;font-size:31px;line-height:1.36;color:var(--forest-deep);font-weight:700;}
+.pt-b{display:block;font-size:28px;line-height:1.4;color:var(--gold);margin-top:4px;font-weight:400;}
+.pt-b .arw{font-family:var(--font-en);font-weight:600;font-style:normal;margin-right:5px;}
+
+/* ── 數字條 ── */
+.figures{
+  display:grid;grid-template-columns:1.45fr 1fr 1fr;background:var(--forest);
+  border-radius:18px;padding:18px 8px;margin-top:16px;
+}
+.fig{text-align:center;padding:0 12px;border-right:1px solid rgba(247,245,240,.22);}
+.fig:last-child{border-right:none;}
+.fig .fv{display:block;font-family:var(--font-title);font-size:42px;font-weight:700;color:var(--on-forest);line-height:1.18;}
+/* 長金額（HK$1,000,000）單獨降一級，否則會撐爆格子 */
+.fig.wide .fv{font-size:35px;letter-spacing:-.005em;}
+.fig .fv .num{font-family:var(--font-en);font-size:46px;}
+.fig.wide .fv .num{font-size:39px;}
+.fig .fl{display:block;font-family:"Noto Sans TC",sans-serif;font-size:18px;letter-spacing:.14em;color:var(--sage);margin-top:6px;}
+
+/* ── CTA ── */
+.cta{background:var(--paper);border-radius:18px;padding:18px 28px;margin-top:14px;}
+.cta-hand{font-family:var(--font-hand);font-size:25px;color:var(--gold);letter-spacing:.1em;margin-bottom:4px;}
+.cta-txt{font-family:var(--font-title);font-size:32px;font-weight:700;color:var(--forest-deep);line-height:1.38;}
+.cta-who{font-size:20px;color:var(--ink-soft);margin-top:8px;font-family:"Noto Sans TC",sans-serif;}
+.cta-who b{font-family:var(--font-en);font-size:23px;color:var(--forest);font-weight:600;letter-spacing:.04em;}
+
+/* ── footer 免責 ── */
+.disc{margin-top:auto;padding-top:12px;font-size:18px;line-height:1.55;color:var(--ink-soft);font-family:"Noto Sans TC",sans-serif;letter-spacing:.02em;}
+.disc.hidden{display:none;}
+
+/* ── 樹葉裝飾（純 SVG，不依賴外部圖）── */
+.leaf{position:absolute;right:0;bottom:0;width:300px;height:300px;z-index:1;opacity:.42;pointer-events:none;}
+.leaf path,.leaf line{stroke:var(--sage);fill:none;stroke-width:2.4;stroke-linecap:round;}
+
+/* ── P2 情境版 ── */
+.scene-quote{font-family:var(--font-hand);font-size:29px;color:var(--gold);letter-spacing:.08em;margin-bottom:14px;}
+.scene-body{font-family:var(--font-title);font-size:39px;font-weight:700;color:var(--forest-deep);line-height:1.5;}
+.scene-body em.hl{color:var(--gold);font-style:normal;}
+
+/* ── P3 清單版 ── */
+.bigfig{text-align:center;margin:4px 0 2px;}
+.bigfig .bf-num{font-family:var(--font-en);font-size:112px;font-weight:600;color:var(--forest);line-height:1.02;letter-spacing:-.01em;}
+.bigfig .bf-num .unit{font-family:var(--font-title);font-size:48px;font-weight:700;margin-left:8px;}
+.bigfig .bf-label{font-family:"Noto Sans TC",sans-serif;font-size:23px;letter-spacing:.2em;color:var(--ink-soft);margin-top:4px;}
+.checklist{list-style:none;}
+.checklist li{display:flex;align-items:flex-start;gap:16px;font-size:32px;line-height:1.46;color:var(--forest-deep);margin-bottom:14px;}
+.checklist li:last-child{margin-bottom:0;}
+.checklist .tick{flex:0 0 auto;width:36px;height:36px;border-radius:50%;background:var(--forest);display:flex;align-items:center;justify-content:center;margin-top:4px;}
+.checklist .tick svg{width:20px;height:20px;}
+.checklist .tick path{stroke:var(--on-forest);stroke-width:3.4;fill:none;stroke-linecap:round;stroke-linejoin:round;}
+
+/* ── P3 內容較少，整組放大，避免下方空一塊 ── */
+.card.p3 .bigfig{margin:16px 0 10px;}
+.card.p3 .bigfig .bf-num{font-size:132px;}
+.card.p3 .bigfig .bf-num .unit{font-size:52px;}
+.card.p3 .bigfig .bf-label{font-size:25px;}
+.card.p3 .kicker{font-size:24px;margin-bottom:16px;}
+.card.p3 .checklist li{font-size:36px;margin-bottom:20px;}
+
+/* ── 金色強調 ── */
+em.hl{color:var(--gold);font-style:normal;}
+
+/* ── 編輯模式與溢位警示 ── */
+body.editing [contenteditable]{outline:1.5px dashed rgba(184,137,59,.55);outline-offset:3px;border-radius:4px;}
+.ovf{display:none;margin-top:10px;font-family:"Noto Sans TC",sans-serif;font-size:14px;font-weight:700;color:#B23A2F;background:#FDECEA;border:1.5px solid #F3C6C0;border-radius:10px;padding:10px 14px;}
+.card-wrap.overflow .ovf{display:block;}
+@media print{.toolbar,.controls{display:none;}body{background:#fff;padding:0;}.deck{gap:0;}}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>一頁紙方案產生器</h1>
+  <div style="display:flex;gap:10px;align-items:center;">
+    <span class="hint">發 WhatsApp 前，先確認圖上沒有客戶敏感資料</span>
+    <button class="btn ghost" id="btnEdit">✎ 編輯文字</button>
+    <button class="btn" id="btnExport">匯出 PNG</button>
+  </div>
+</div>
+
+<div class="controls">
+  <label>客戶稱呼 <input type="text" id="inClient" value="陳先生"></label>
+  <label>日期 <input type="text" id="inDate" value="2026.10.08"></label>
+  <label>顧問 <input type="text" id="inAdvisor" value="Lester Leung · 財富策劃顧問"></label>
+  <label>WhatsApp <input type="text" id="inWa" value="+852 9123 4567"></label>
+  <label>金色關鍵字 <input type="text" id="inKw" size="28" value="一筆過賠, 收入缺口, 積蓄"></label>
+</div>
+
+<div class="deck">
+
+  <!-- ══════════════════ P1 · 需求對照 ══════════════════ -->
+  <div class="card-wrap">
+    <div class="card-label"><b>P1 · 需求對照</b>　客戶已談過、明確講過關注點</div>
+    <div class="card" data-filename="P1-需求對照">
+      <div class="frame">
+        <header class="head">
+          <div class="who">
+            <div class="avatar" data-init>陳</div>
+            <div class="who-txt">
+              <div class="for" data-client-slot>陳先生的保障方案</div>
+              <div class="date" data-date>2026.10.08</div>
+            </div>
+          </div>
+          <div class="brand">LESTER<span>LIANG</span></div>
+        </header>
+        <div class="rule"></div>
+
+        <section class="blk needs">
+          <div class="kicker">你嘅關注</div>
+          <ul>
+            <li data-kw><i>1</i><span>萬一重病，收入中斷點算</span></li>
+            <li data-kw><i>2</i><span>唔想動用到積蓄睇醫生</span></li>
+            <li data-kw><i>3</i><span>想屋企人唔使為錢煩</span></li>
+          </ul>
+        </section>
+
+        <section class="blk plan">
+          <div class="kicker">對應方案</div>
+          <div class="plan-name" data-kw>XX 危疾保障計劃</div>
+          <ul class="points">
+            <li data-kw>
+              <span class="pt-a">符合保單定義下，一筆過賠 HK$1,000,000</span>
+              <span class="pt-b"><em class="arw">→</em>補住約 2 年收入缺口，唔使急住復工</span>
+            </li>
+            <li data-kw>
+              <span class="pt-a">住院及手術開支實報實銷</span>
+              <span class="pt-b"><em class="arw">→</em>唔使為醫藥費動用你嘅積蓄</span>
+            </li>
+            <li data-kw>
+              <span class="pt-a">身故額外賠 HK$500,000</span>
+              <span class="pt-b"><em class="arw">→</em>家人有一筆緩衝，唔使即刻改變生活</span>
+            </li>
+          </ul>
+        </section>
+
+        <div class="figures">
+          <div class="fig wide"><span class="fv">HK$1,000,000</span><span class="fl">危疾保額</span></div>
+          <div class="fig"><span class="fv"><span class="num">580</span></span><span class="fl">每月保費</span></div>
+          <div class="fig"><span class="fv"><span class="num">20</span> 年</span><span class="fl">供款年期</span></div>
+        </div>
+
+        <section class="cta">
+          <div class="cta-hand">下一步</div>
+          <div class="cta-txt" data-kw>約 30 分鐘，我幫你逐項對一次保單條款</div>
+          <div class="cta-who"><span data-advisor>Lester Leung · 財富策劃顧問</span> · WhatsApp <b data-wa>+852 9123 4567</b></div>
+        </section>
+
+        <div class="disc">本頁僅為方案摘要，一切以正式保單條款為準。</div>
+      </div>
+      <svg class="leaf" viewBox="0 0 340 340" aria-hidden="true">
+        <line x1="330" y1="334" x2="196" y2="200"/>
+        <path d="M300 306c-38-6-62-30-66-68 40 4 64 28 66 68z"/>
+        <path d="M262 268c-38-6-62-30-66-68 40 4 64 28 66 68z"/>
+        <path d="M300 306c6-38 30-62 68-66-4 40-28 64-68 66z"/>
+        <path d="M262 268c6-38 30-62 68-66-4 40-28 64-68 66z"/>
+      </svg>
+    </div>
+    <div class="ovf">⚠ 內容超出卡片，匯出會被裁掉，請減字或降字級。</div>
+  </div>
+
+  <!-- ══════════════════ P2 · 情境敘事 ══════════════════ -->
+  <div class="card-wrap">
+    <div class="card-label"><b>P2 · 情境敘事</b>　客戶對抽象條款無感，要靠一個具體畫面打動</div>
+    <div class="card" data-filename="P2-情境敘事">
+      <div class="frame">
+        <header class="head">
+          <div class="who">
+            <div class="avatar" data-init>陳</div>
+            <div class="who-txt">
+              <div class="for" data-client-slot>陳先生的保障方案</div>
+              <div class="date" data-date>2026.10.08</div>
+            </div>
+          </div>
+          <div class="brand">LESTER<span>LIANG</span></div>
+        </header>
+        <div class="rule"></div>
+
+        <section class="blk scene">
+          <div class="scene-quote">假如，聽日就發生…</div>
+          <div class="scene-body" data-kw>45 歲確診，醫生話要停工休養一年。<br>收入斷咗，但供樓、租、細路學費<br>一蚊都唔會停。</div>
+        </section>
+
+        <section class="blk plan">
+          <div class="kicker">呢張保單點應對</div>
+          <ul class="points">
+            <li data-kw>
+              <span class="pt-a">符合保單定義下，一筆過賠 HK$1,000,000</span>
+              <span class="pt-b"><em class="arw">→</em>現金即到手，唔使等報銷、唔使借錢</span>
+            </li>
+            <li data-kw>
+              <span class="pt-a">賠償不限用途</span>
+              <span class="pt-b"><em class="arw">→</em>供樓、交租、請看護，你話事</span>
+            </li>
+            <li data-kw>
+              <span class="pt-a">住院及手術開支另外實報實銷</span>
+              <span class="pt-b"><em class="arw">→</em>一筆過賠償唔使分薄去俾醫藥費</span>
+            </li>
+          </ul>
+        </section>
+
+        <div class="figures">
+          <div class="fig wide"><span class="fv">HK$1,000,000</span><span class="fl">危疾保額</span></div>
+          <div class="fig"><span class="fv"><span class="num">580</span></span><span class="fl">每月保費</span></div>
+          <div class="fig"><span class="fv"><span class="num">20</span> 年</span><span class="fl">供款年期</span></div>
+        </div>
+
+        <section class="cta">
+          <div class="cta-hand">下一步</div>
+          <div class="cta-txt" data-kw>我準備咗三個保額版本，約 30 分鐘同你揀</div>
+          <div class="cta-who"><span data-advisor>Lester Leung · 財富策劃顧問</span> · WhatsApp <b data-wa>+852 9123 4567</b></div>
+        </section>
+
+        <div class="disc">本頁僅為方案摘要，一切以正式保單條款為準。</div>
+      </div>
+      <svg class="leaf" viewBox="0 0 340 340" aria-hidden="true">
+        <line x1="330" y1="334" x2="196" y2="200"/>
+        <path d="M300 306c-38-6-62-30-66-68 40 4 64 28 66 68z"/>
+        <path d="M262 268c-38-6-62-30-66-68 40 4 64 28 66 68z"/>
+        <path d="M300 306c6-38 30-62 68-66-4 40-28 64-68 66z"/>
+        <path d="M262 268c6-38 30-62 68-66-4 40-28 64-68 66z"/>
+      </svg>
+    </div>
+    <div class="ovf">⚠ 內容超出卡片，匯出會被裁掉，請減字或降字級。</div>
+  </div>
+
+  <!-- ══════════════════ P3 · 保障清單 ══════════════════ -->
+  <div class="card-wrap">
+    <div class="card-label"><b>P3 · 保障清單</b>　客戶已有信任、只想看「保咩、幾多錢」</div>
+    <div class="card p3" data-filename="P3-保障清單">
+      <div class="frame">
+        <header class="head">
+          <div class="who">
+            <div class="avatar" data-init>陳</div>
+            <div class="who-txt">
+              <div class="for" data-client-slot>陳先生的保障方案</div>
+              <div class="date" data-date>2026.10.08</div>
+            </div>
+          </div>
+          <div class="brand">LESTER<span>LIANG</span></div>
+        </header>
+        <div class="rule"></div>
+
+        <div class="bigfig">
+          <div class="bf-num">1,000,000<span class="unit">港元</span></div>
+          <div class="bf-label">危疾一筆過保障額</div>
+        </div>
+
+        <section class="blk plan">
+          <div class="kicker">保障內容</div>
+          <ul class="checklist">
+            <li>
+              <span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+              <span data-kw>符合保單定義下確診，一筆過賠償，用途不限</span>
+            </li>
+            <li>
+              <span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+              <span data-kw>覆蓋 60+ 種疾病，含早期疾病預支賠償</span>
+            </li>
+            <li>
+              <span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+              <span data-kw>住院及手術開支另外實報實銷</span>
+            </li>
+            <li>
+              <span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+              <span data-kw>身故額外賠 HK$500,000</span>
+            </li>
+            <li>
+              <span class="tick"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>
+              <span data-kw>保費固定，供款期內唔會加價</span>
+            </li>
+          </ul>
+        </section>
+
+        <div class="figures">
+          <div class="fig"><span class="fv"><span class="num">580</span></span><span class="fl">每月保費</span></div>
+          <div class="fig"><span class="fv"><span class="num">20</span> 年</span><span class="fl">供款年期</span></div>
+          <div class="fig"><span class="fv"><span class="num">100</span> 歲</span><span class="fl">保障至</span></div>
+        </div>
+
+        <section class="cta">
+          <div class="cta-hand">下一步</div>
+          <div class="cta-txt" data-kw>條款細節我逐項講解，約 30 分鐘</div>
+          <div class="cta-who"><span data-advisor>Lester Leung · 財富策劃顧問</span> · WhatsApp <b data-wa>+852 9123 4567</b></div>
+        </section>
+
+        <div class="disc">本頁僅為方案摘要，一切以正式保單條款為準。</div>
+      </div>
+      <svg class="leaf" viewBox="0 0 340 340" aria-hidden="true">
+        <line x1="330" y1="334" x2="196" y2="200"/>
+        <path d="M300 306c-38-6-62-30-66-68 40 4 64 28 66 68z"/>
+        <path d="M262 268c-38-6-62-30-66-68 40 4 64 28 66 68z"/>
+        <path d="M300 306c6-38 30-62 68-66-4 40-28 64-68 66z"/>
+        <path d="M262 268c6-38 30-62 68-66-4 40-28 64-68 66z"/>
+      </svg>
+    </div>
+    <div class="ovf">⚠ 內容超出卡片，匯出會被裁掉，請減字或降字級。</div>
+  </div>
+
+</div>
+
+<script>
+/* ============================================================
+   設定區：每次生成只改這裡
+   ============================================================ */
+window.PROPOSAL_CONFIG = {
+  client   : '陳先生',
+  date     : '2026.10.08',
+  advisor  : 'Lester Leung · 財富策劃顧問',
+  wa       : '+852 9123 4567',
+  initials : '陳',
+  keywords : ['一筆過賠', '收入缺口', '積蓄'],
+  leaf     : true
+};
+
+(function(){
+  var CFG = window.PROPOSAL_CONFIG;
+
+  function esc(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  /* ── 填設定值 ── */
+  function fillConfig(){
+    document.querySelectorAll('[data-client-slot]').forEach(function(el){
+      el.textContent = CFG.client + '的保障方案';
+    });
+    document.querySelectorAll('[data-init]').forEach(function(el){ el.textContent = CFG.initials; });
+    document.querySelectorAll('[data-date]').forEach(function(el){ el.textContent = CFG.date; });
+    document.querySelectorAll('[data-advisor]').forEach(function(el){ el.textContent = CFG.advisor; });
+    document.querySelectorAll('[data-wa]').forEach(function(el){ el.textContent = CFG.wa; });
+    document.querySelectorAll('.leaf').forEach(function(el){ el.style.display = CFG.leaf ? '' : 'none'; });
+  }
+
+  /* ── 金色關鍵字（長詞優先；可重複套用，會先還原上一次標記）── */
+  function unwrapHl(){
+    document.querySelectorAll('em.hl').forEach(function(em){
+      var parent = em.parentNode;
+      parent.replaceChild(document.createTextNode(em.textContent), em);
+      parent.normalize();
+    });
+  }
+  function applyKeywords(){
+    unwrapHl();
+    var kws = (CFG.keywords || []).filter(Boolean).slice().sort(function(a,b){ return b.length - a.length; });
+    if(!kws.length) return;
+    var re = new RegExp('(' + kws.map(esc).join('|') + ')', 'g');
+    document.querySelectorAll('[data-kw]').forEach(function(root){
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+      var nodes = [], n;
+      while((n = walker.nextNode())) nodes.push(n);
+      nodes.forEach(function(node){
+        if(node.parentElement && node.parentElement.closest('em.hl')) return;
+        var txt = node.nodeValue;
+        re.lastIndex = 0;
+        if(!re.test(txt)) return;
+        re.lastIndex = 0;
+        var frag = document.createDocumentFragment(), last = 0, m;
+        while((m = re.exec(txt))){
+          if(m.index > last) frag.appendChild(document.createTextNode(txt.slice(last, m.index)));
+          var em = document.createElement('em');
+          em.className = 'hl';
+          em.textContent = m[0];
+          frag.appendChild(em);
+          last = m.index + m[0].length;
+        }
+        if(last < txt.length) frag.appendChild(document.createTextNode(txt.slice(last)));
+        node.parentNode.replaceChild(frag, node);
+      });
+    });
+  }
+
+  /* ── 溢位檢測（編輯模式提示用）── */
+  function checkOverflow(){
+    document.querySelectorAll('.card-wrap').forEach(function(wrap){
+      var card = wrap.querySelector('.card');
+      var frame = wrap.querySelector('.frame');
+      wrap.classList.toggle('overflow', frame.scrollHeight > frame.clientHeight + 2);
+    });
+  }
+
+  /* ── 匯出 PNG（逐卡）── */
+  function exportAll(){
+    var btn = document.getElementById('btnExport');
+    btn.disabled = true;
+    var wraps = Array.prototype.slice.call(document.querySelectorAll('.card-wrap'));
+    var labels = document.querySelectorAll('.card-label, .ovf, .toolbar, .controls');
+    labels.forEach(function(el){ el.style.visibility = 'hidden'; });
+
+    var chain = Promise.resolve();
+    wraps.forEach(function(wrap){
+      chain = chain.then(function(){
+        var card = wrap.querySelector('.card');
+        var name = card.getAttribute('data-filename') || 'plan';
+        return html2canvas(card, { backgroundColor:'#FFFDF8', scale:1, useCORS:true, logging:false })
+          .then(function(canvas){
+            var a = document.createElement('a');
+            a.download = name + '.png';
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+            return new Promise(function(r){ setTimeout(r, 400); });
+          });
+      });
+    });
+    chain.then(function(){
+      labels.forEach(function(el){ el.style.visibility = ''; });
+      btn.disabled = false;
+    });
+  }
+
+  /* ── 編輯模式 ── */
+  function toggleEdit(){
+    var body = document.body;
+    var on = !body.classList.contains('editing');
+    body.classList.toggle('editing', on);
+    document.querySelectorAll('.for, .who-txt .date, .kicker, .plan-name, .pt-a, .pt-b, .scene-quote, .scene-body, .cta-txt, .cta-hand, .disc, .needs li span:last-child, .checklist li span:last-child, .fig .fv, .fig .fl')
+      .forEach(function(el){ el.contentEditable = on ? 'true' : 'false'; });
+    document.getElementById('btnEdit').textContent = on ? '✓ 完成編輯' : '✎ 編輯文字';
+  }
+
+  /* ── 欄位連動 ── */
+  function bindInputs(){
+    var map = { inClient:'client', inDate:'date', inAdvisor:'advisor', inWa:'wa' };
+    Object.keys(map).forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('input', function(){
+        CFG[map[id]] = el.value;
+        if(map[id] === 'client') CFG.initials = el.value.slice(0, 1) || '客';
+        fillConfig();
+        applyKeywords();
+        checkOverflow();
+      });
+    });
+    var kw = document.getElementById('inKw');
+    if(kw) kw.addEventListener('input', function(){
+      CFG.keywords = kw.value.split(/[,，]/).map(function(s){ return s.trim(); }).filter(Boolean);
+      applyKeywords();
+      checkOverflow();
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    fillConfig();
+    applyKeywords();
+    checkOverflow();
+    bindInputs();
+    document.addEventListener('input', checkOverflow);
+    document.getElementById('btnExport').addEventListener('click', exportAll);
+    document.getElementById('btnEdit').addEventListener('click', toggleEdit);
+    if(document.fonts && document.fonts.ready){
+      document.fonts.ready.then(function(){ applyKeywords(); checkOverflow(); });
+    }
+  });
+})();
+</script>
+</body>
+</html>
